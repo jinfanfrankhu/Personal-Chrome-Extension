@@ -549,10 +549,10 @@ class MITContentExtension {
             });
 
             if (token) {
-                const nextEvent = await this.fetchNextCalendarEvent(token);
-                if (nextEvent) {
-                    await this.cacheCalendarEvent(nextEvent);
-                    this.displayNextEvent(nextEvent);
+                const nextEvents = await this.fetchNextCalendarEvent(token);
+                if (nextEvents && nextEvents.length > 0) {
+                    await this.cacheCalendarEvent(nextEvents);
+                    this.displayNextEvents(nextEvents);
                 } else {
                     this.displayNoEvents();
                 }
@@ -566,7 +566,7 @@ class MITContentExtension {
     async fetchNextCalendarEvent(token) {
         try {
             const now = new Date().toISOString();
-            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&maxResults=1&singleEvents=true&orderBy=startTime`, {
+            const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&maxResults=2&singleEvents=true&orderBy=startTime`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -577,9 +577,9 @@ class MITContentExtension {
             }
 
             const data = await response.json();
-            return data.items && data.items.length > 0 ? data.items[0] : null;
+            return data.items && data.items.length > 0 ? data.items : null;
         } catch (error) {
-            console.error('Failed to fetch calendar event:', error);
+            console.error('Failed to fetch calendar events:', error);
             return null;
         }
     }
@@ -601,10 +601,10 @@ class MITContentExtension {
         return null;
     }
 
-    async cacheCalendarEvent(event) {
+    async cacheCalendarEvent(events) {
         try {
             const cacheData = {
-                event: event,
+                event: events,
                 timestamp: Date.now()
             };
             await chrome.storage.local.set({ [this.CALENDAR_CACHE_KEY]: cacheData });
@@ -613,28 +613,52 @@ class MITContentExtension {
         }
     }
 
-    displayNextEvent(event) {
+    displayNextEvents(events) {
         const nextEventDiv = document.getElementById('nextEvent');
         
-        const startTime = event.start?.dateTime || event.start?.date;
-        const eventDate = new Date(startTime);
-        const now = new Date();
-        
-        let timeString = '';
-        if (eventDate.toDateString() === now.toDateString()) {
-            timeString = `Today at ${eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-        } else if (eventDate.toDateString() === new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString()) {
-            timeString = `Tomorrow at ${eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-        } else {
-            timeString = eventDate.toLocaleDateString() + ' at ' + eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (!events || events.length === 0) {
+            this.displayNoEvents();
+            return;
         }
 
-        nextEventDiv.innerHTML = `
-            <div class="event-info">
-                <div class="event-title">${event.summary || 'Untitled Event'}</div>
-                <div class="event-time">${timeString}</div>
-            </div>
-        `;
+        // Handle both single event (legacy) and multiple events
+        const eventsArray = Array.isArray(events) ? events : [events];
+        
+        let eventsHTML = '';
+        
+        eventsArray.forEach((event, index) => {
+            const startTime = event.start?.dateTime || event.start?.date;
+            const eventDate = new Date(startTime);
+            const now = new Date();
+            
+            let timeString = '';
+            const timeDiff = eventDate.getTime() - now.getTime();
+            const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+            
+            if (eventDate.toDateString() === now.toDateString()) {
+                timeString = `Today at ${eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            } else if (daysDiff === 1) {
+                timeString = `Tomorrow at ${eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            } else if (daysDiff < 7 && daysDiff > 0) {
+                const dayName = eventDate.toLocaleDateString('en-US', { weekday: 'long' });
+                timeString = `${dayName} at ${eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            } else {
+                timeString = eventDate.toLocaleDateString() + ' at ' + eventDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            const eventTitle = event.summary || 'Untitled Event';
+            const isFirst = index === 0;
+            
+            eventsHTML += `
+                <div class="event-info ${isFirst ? 'primary-event' : 'secondary-event'}">
+                    <div class="event-title">${eventTitle}</div>
+                    <div class="event-time">${timeString}</div>
+                    ${event.location ? `<div class="event-location">${event.location}</div>` : ''}
+                </div>
+            `;
+        });
+
+        nextEventDiv.innerHTML = eventsHTML;
     }
 
     displayNoEvents() {
