@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIT News - Homepage</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Calendar and Countdown Bar -->
+        <div class="calendar-bar">
+            <div class="countdown-section">
+                <h3 id="countdownTitle">Days until Target Date</h3>
+                <div class="countdown-display">
+                    <div class="countdown-number">
+                        <span id="daysCount">--</span>
+                        <label>Days</label>
+                    </div>
+                    <div class="countdown-number">
+                        <span id="hoursCount">--</span>
+                        <label>Hours</label>
+                    </div>
+                    <div class="countdown-number">
+                        <span id="minutesCount">--</span>
+                        <label>Minutes</label>
+                    </div>
+                </div>
+                <button id="setDateBtn" class="set-date-btn">Set Target Date</button>
+            </div>
+            
+            <div class="next-event-section">
+                <h3>Next Calendar Event</h3>
+                <div id="nextEvent" class="next-event">
+                    <div class="event-placeholder">
+                        <button id="connectCalendarBtn" class="connect-btn">Connect Google Calendar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <header class="header">
+            <div class="logo-section">
+                <h1>MIT News & Blogs</h1>
+                <p class="subtitle">Massachusetts Institute of Technology</p>
+            </div>
+            <div class="refresh-section">
+                <button id="refreshBtn" class="refresh-btn">Refresh</button>
+                <span id="lastUpdated" class="last-updated"></span>
+            </div>
+        </header>
+        
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Loading MIT News & Blogs...</p>
+        </div>
+        
+        <div id="error" class="error hidden">
+            <h2>Unable to load MIT Content</h2>
+            <p id="errorMessage">There was an error fetching the news and blog feeds.</p>
+            <button id="retryBtn" class="retry-btn">Try Again</button>
+        </div>
+        
+        <main id="newsContainer" class="news-container hidden">
+            <!-- News articles will be dynamically loaded here -->
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

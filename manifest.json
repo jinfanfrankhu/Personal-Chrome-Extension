@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "MIT News & Calendar Homepage",
+  "version": "1.0",
+  "description": "Replace Chrome's new tab page with MIT News RSS feed and Google Calendar integration",
+  "permissions": [
+    "storage",
+    "identity"
+  ],
+  "host_permissions": [
+    "https://news.mit.edu/*",
+    "https://www.technologyreview.com/*",
+    "https://mitadmissions.org/*",
+    "https://www.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "103842373196-oi1i1m8281fm3icd6h4sm2mbf86i7ei4.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/calendar.readonly"
+    ]
+  },
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  },
+  "icons": {
+    "16": "icon16.png",
+    "512": "icon512.png"
+  }
+}
