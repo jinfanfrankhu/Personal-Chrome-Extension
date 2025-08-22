@@ -37,11 +37,7 @@ class MITContentExtension {
         await this.initializeCalendar();
     }
 
-    bindEvents() {
-        document.getElementById('refreshBtn').addEventListener('click', () => {
-            this.loadNews(true);
-        });
-        
+    bindEvents() {    
         document.getElementById('retryBtn').addEventListener('click', () => {
             this.loadNews(true);
         });
@@ -76,7 +72,6 @@ class MITContentExtension {
 
             if (newsData && newsData.length > 0) {
                 this.displayNews(newsData);
-                this.updateLastUpdated();
             } else {
                 throw new Error('No news articles found');
             }
@@ -350,12 +345,6 @@ class MITContentExtension {
         } catch (error) {
             return 'Recently';
         }
-    }
-
-    updateLastUpdated() {
-        const lastUpdatedElement = document.getElementById('lastUpdated');
-        const now = new Date();
-        lastUpdatedElement.textContent = `Last updated: ${now.toLocaleTimeString()}`;
     }
 
     showLoading() {
