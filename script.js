@@ -23,6 +23,8 @@ class MITContentExtension {
         this.CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
         this.TARGET_DATE_KEY = 'target_date';
         this.CALENDAR_CACHE_KEY = 'calendar_cache';
+        this.CALENDAR_CONNECTED_KEY = 'calendar_connected';
+        this.CALENDAR_TOKEN_KEY = 'calendar_token';
         this.countdownInterval = null;
         this.TARGET_TITLE_KEY = 'target_title';
         this.init();
@@ -526,15 +528,103 @@ class MITContentExtension {
 
     // Google Calendar functionality
     async initializeCalendar() {
-        const cachedEvent = await this.loadCachedCalendarEvent();
-        if (cachedEvent) {
-            this.displayNextEvent(cachedEvent);
+        const isConnected = await this.isCalendarConnected();
+        if (isConnected) {
+            // Try to load events automatically
+            await this.loadCalendarEventsAutomatically();
+        }
+    }
+
+    async isCalendarConnected() {
+        try {
+            const result = await chrome.storage.local.get([this.CALENDAR_CONNECTED_KEY]);
+            return result[this.CALENDAR_CONNECTED_KEY] || false;
+        } catch (error) {
+            console.log('Failed to check calendar connection status:', error);
+            return false;
+        }
+    }
+
+    // Add new method to save connection status
+    async saveCalendarConnectionStatus(connected) {
+        try {
+            await chrome.storage.local.set({ [this.CALENDAR_CONNECTED_KEY]: connected });
+        } catch (error) {
+            console.log('Failed to save calendar connection status:', error);
+        }
+    }
+
+    // Add new method to load events automatically
+    async loadCalendarEventsAutomatically() {
+        try {
+            // First try cached events
+            const cachedEvents = await this.loadCachedCalendarEvent();
+            if (cachedEvents) {
+                this.displayNextEvents(cachedEvents);
+                
+                // Check if cache is getting old (refresh if older than 5 minutes for better UX)
+                const cacheAge = Date.now() - (await this.getCacheTimestamp());
+                if (cacheAge < 5 * 60 * 1000) { // 5 minutes
+                    return; // Use cache if it's fresh
+                }
+            }
+
+            // Try to get a token silently (non-interactive)
+            const token = await this.getTokenSilently();
+            if (token) {
+                const nextEvents = await this.fetchNextCalendarEvent(token);
+                if (nextEvents && nextEvents.length > 0) {
+                    await this.cacheCalendarEvent(nextEvents);
+                    this.displayNextEvents(nextEvents);
+                } else if (!cachedEvents) {
+                    this.displayNoEvents();
+                }
+            } else if (!cachedEvents) {
+                // If no token and no cache, show connect button
+                this.displayCalendarConnectionNeeded();
+            }
+        } catch (error) {
+            console.error('Auto calendar load failed:', error);
+            // If auto-load fails, try to use cached events
+            const cachedEvents = await this.loadCachedCalendarEvent();
+            if (cachedEvents) {
+                this.displayNextEvents(cachedEvents);
+            } else {
+                this.displayCalendarConnectionNeeded();
+            }
+        }
+    }
+
+    // Add method to get token silently
+    async getTokenSilently() {
+        return new Promise((resolve) => {
+            chrome.identity.getAuthToken({ 
+                interactive: false, // Don't prompt user
+                scopes: ['https://www.googleapis.com/auth/calendar.readonly']
+            }, (token) => {
+                if (chrome.runtime.lastError || !token) {
+                    resolve(null);
+                } else {
+                    resolve(token);
+                }
+            });
+        });
+    }
+
+    // Add method to get cache timestamp
+    async getCacheTimestamp() {
+        try {
+            const result = await chrome.storage.local.get([this.CALENDAR_CACHE_KEY]);
+            const cached = result[this.CALENDAR_CACHE_KEY];
+            return cached?.timestamp || 0;
+        } catch (error) {
+            return 0;
         }
     }
 
     async connectGoogleCalendar() {
         try {
-            // Request OAuth token
+            // Request OAuth token (interactive)
             const token = await new Promise((resolve, reject) => {
                 chrome.identity.getAuthToken({ 
                     interactive: true,
@@ -549,6 +639,9 @@ class MITContentExtension {
             });
 
             if (token) {
+                // Mark as connected
+                await this.saveCalendarConnectionStatus(true);
+                
                 const nextEvents = await this.fetchNextCalendarEvent(token);
                 if (nextEvents && nextEvents.length > 0) {
                     await this.cacheCalendarEvent(nextEvents);
@@ -611,6 +704,35 @@ class MITContentExtension {
         } catch (error) {
             console.log('Calendar cache saving failed:', error);
         }
+    }
+
+    async reconnectCalendar() {
+        try {
+            // Clear stored connection status and cache
+            await chrome.storage.local.remove([this.CALENDAR_CONNECTED_KEY, this.CALENDAR_CACHE_KEY]);
+            
+            // Remove any existing tokens
+            chrome.identity.clearAllCachedAuthTokens(() => {
+                // Reconnect
+                this.connectGoogleCalendar();
+            });
+        } catch (error) {
+            console.error('Reconnection failed:', error);
+            this.connectGoogleCalendar();
+        }
+    }
+
+    displayCalendarConnectionNeeded() {
+        const nextEventDiv = document.getElementById('nextEvent');
+        nextEventDiv.innerHTML = `
+            <div class="event-placeholder">
+                <button id="connectCalendarBtn" class="connect-btn">Connect Google Calendar</button>
+            </div>
+        `;
+        
+        document.getElementById('connectCalendarBtn').addEventListener('click', () => {
+            this.connectGoogleCalendar();
+        });
     }
 
     displayNextEvents(events) {
@@ -676,11 +798,16 @@ class MITContentExtension {
             <div class="event-placeholder">
                 <span>Failed to load calendar</span>
                 <button id="retryCalendarBtn" class="connect-btn" style="margin-top: 10px;">Retry</button>
+                <button id="reconnectCalendarBtn" class="connect-btn" style="margin-top: 5px; font-size: 0.8rem; padding: 4px 8px;">Reconnect</button>
             </div>
         `;
         
         document.getElementById('retryCalendarBtn').addEventListener('click', () => {
-            this.connectGoogleCalendar();
+            this.loadCalendarEventsAutomatically();
+        });
+        
+        document.getElementById('reconnectCalendarBtn').addEventListener('click', () => {
+            this.reconnectCalendar();
         });
     }
 }
