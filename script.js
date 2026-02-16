@@ -25,6 +25,7 @@ class MITContentExtension {
         this.CALENDAR_CACHE_KEY = 'calendar_cache';
         this.CALENDAR_CONNECTED_KEY = 'calendar_connected';
         this.CALENDAR_TOKEN_KEY = 'calendar_token';
+        this.TASKS_CACHE_KEY = 'tasks_cache';
         this.countdownInterval = null;
         this.TARGET_TITLE_KEY = 'target_title';
         this.init();
@@ -35,6 +36,7 @@ class MITContentExtension {
         await this.loadNews();
         await this.initializeCountdown();
         await this.initializeCalendar();
+        await this.initializeTasks();
     }
 
     bindEvents() {    
@@ -382,8 +384,8 @@ class MITContentExtension {
             // Set default to a common academic date (e.g., end of semester)
             const now = new Date();
             const year = now.getMonth() === 11 && now.getDate() > 15 ? now.getFullYear() + 1 : now.getFullYear();
-            // Create date at midnight EST (UTC-5) for December 15th
-            const defaultDate = new Date(`${year}-12-15T05:00:00.000Z`);
+            // Create date at midnight in local timezone for December 15th
+            const defaultDate = new Date(`${year}-12-15T00:00:00`);
             this.startCountdown(defaultDate);
             document.getElementById('countdownTitle').textContent = 'Days until End of Semester';
         }
@@ -410,7 +412,13 @@ class MITContentExtension {
     async loadTargetDate() {
         try {
             const result = await chrome.storage.local.get([this.TARGET_DATE_KEY]);
-            return result[this.TARGET_DATE_KEY] ? new Date(result[this.TARGET_DATE_KEY]) : null;
+            console.log('Loaded date from storage (ISO):', result[this.TARGET_DATE_KEY]);
+            const date = result[this.TARGET_DATE_KEY] ? new Date(result[this.TARGET_DATE_KEY]) : null;
+            if (date) {
+                console.log('Loaded date as Date object:', date.toString());
+                console.log('Loaded date ISO:', date.toISOString());
+            }
+            return date;
         } catch (error) {
             console.log('Failed to load target date:', error);
             return null;
@@ -494,9 +502,8 @@ class MITContentExtension {
             const titleValue = document.getElementById('titleInput').value.trim();
 
             if (dateValue) {
-                // Create date at midnight EST (UTC-5)
-                // EST is 5 hours behind UTC, so midnight EST = 05:00 UTC
-                const targetDate = new Date(dateValue + 'T05:00:00.000Z');
+                // Create date at midnight in local timezone
+                const targetDate = new Date(dateValue + 'T00:00:00');
                 await this.saveTargetDate(targetDate);
 
                 // Save and update countdown title
@@ -590,9 +597,12 @@ class MITContentExtension {
     // Add method to get token silently
     async getTokenSilently() {
         return new Promise((resolve) => {
-            chrome.identity.getAuthToken({ 
+            chrome.identity.getAuthToken({
                 interactive: false, // Don't prompt user
-                scopes: ['https://www.googleapis.com/auth/calendar.readonly']
+                scopes: [
+                    'https://www.googleapis.com/auth/calendar.readonly',
+                    'https://www.googleapis.com/auth/tasks'
+                ]
             }, (token) => {
                 if (chrome.runtime.lastError || !token) {
                     resolve(null);
@@ -618,9 +628,12 @@ class MITContentExtension {
         try {
             // Request OAuth token (interactive)
             const token = await new Promise((resolve, reject) => {
-                chrome.identity.getAuthToken({ 
+                chrome.identity.getAuthToken({
                     interactive: true,
-                    scopes: ['https://www.googleapis.com/auth/calendar.readonly']
+                    scopes: [
+                        'https://www.googleapis.com/auth/calendar.readonly',
+                        'https://www.googleapis.com/auth/tasks'
+                    ]
                 }, (token) => {
                     if (chrome.runtime.lastError) {
                         reject(chrome.runtime.lastError);
@@ -633,7 +646,7 @@ class MITContentExtension {
             if (token) {
                 // Mark as connected
                 await this.saveCalendarConnectionStatus(true);
-                
+
                 const nextEvents = await this.fetchNextCalendarEvent(token);
                 if (nextEvents && nextEvents.length > 0) {
                     await this.cacheCalendarEvent(nextEvents);
@@ -641,6 +654,9 @@ class MITContentExtension {
                 } else {
                     this.displayNoEvents();
                 }
+
+                // Also load tasks
+                await this.loadTasksAutomatically();
             }
         } catch (error) {
             console.error('Calendar connection failed:', error);
@@ -793,14 +809,416 @@ class MITContentExtension {
                 <button id="reconnectCalendarBtn" class="connect-btn" style="margin-top: 5px; font-size: 0.8rem; padding: 4px 8px;">Reconnect</button>
             </div>
         `;
-        
+
         document.getElementById('retryCalendarBtn').addEventListener('click', () => {
             this.loadCalendarEventsAutomatically();
         });
-        
+
         document.getElementById('reconnectCalendarBtn').addEventListener('click', () => {
             this.reconnectCalendar();
         });
+    }
+
+    // Google Tasks functionality
+    async initializeTasks() {
+        const isConnected = await this.isCalendarConnected();
+        if (isConnected) {
+            await this.loadTasksAutomatically();
+        }
+    }
+
+    async loadTasksAutomatically() {
+        try {
+            // First try cached tasks
+            const cachedTasks = await this.loadCachedTasks();
+            if (cachedTasks) {
+                this.displayTasks(cachedTasks);
+
+                // Check if cache is getting old
+                const cacheAge = Date.now() - (await this.getTasksCacheTimestamp());
+                if (cacheAge < 5 * 60 * 1000) { // 5 minutes
+                    return; // Use cache if it's fresh
+                }
+            }
+
+            // Try to get a token silently
+            const token = await this.getTokenSilently();
+            if (token) {
+                const tasks = await this.fetchTasksFromAPI(token);
+                if (tasks && tasks.length > 0) {
+                    await this.cacheTasks(tasks);
+                    this.displayTasks(tasks);
+                } else if (!cachedTasks) {
+                    this.displayNoTasks();
+                }
+            } else if (!cachedTasks) {
+                this.displayTasksConnectionNeeded();
+            }
+        } catch (error) {
+            console.error('Auto tasks load failed:', error);
+            const cachedTasks = await this.loadCachedTasks();
+            if (cachedTasks) {
+                this.displayTasks(cachedTasks);
+            } else {
+                this.displayTasksConnectionNeeded();
+            }
+        }
+    }
+
+    async fetchTasksFromAPI(token) {
+        try {
+            console.log('=== FETCHING TASKS ===');
+            // First, get all task lists
+            const listsResponse = await fetch('https://www.googleapis.com/tasks/v1/users/@me/lists', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            console.log('Lists Response Status:', listsResponse.status);
+
+            if (!listsResponse.ok) {
+                throw new Error(`Tasks API error: ${listsResponse.status}`);
+            }
+
+            const listsData = await listsResponse.json();
+            console.log('Task Lists Found:', listsData.items?.length || 0);
+            console.log('Task Lists Data:', listsData);
+
+            const allTasks = [];
+
+            // Fetch tasks only from "My Tasks" list
+            if (listsData.items && listsData.items.length > 0) {
+                // Find "My Tasks" list (it's usually titled "My Tasks" but could vary)
+                const myTasksList = listsData.items.find(list =>
+                    list.title === 'My Tasks' || list.title === 'Tasks'
+                ) || listsData.items[0]; // Fallback to first list if "My Tasks" not found
+
+                console.log(`Fetching tasks from list: "${myTasksList.title}" (ID: ${myTasksList.id})`);
+
+                const tasksResponse = await fetch(
+                    `https://www.googleapis.com/tasks/v1/lists/${myTasksList.id}/tasks?showCompleted=false&maxResults=10`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    }
+                );
+
+                console.log(`Tasks Response Status for "${myTasksList.title}":`, tasksResponse.status);
+
+                if (tasksResponse.ok) {
+                    const tasksData = await tasksResponse.json();
+                    console.log(`Tasks in "${myTasksList.title}":`, tasksData.items?.length || 0);
+                    console.log(`Tasks Data for "${myTasksList.title}":`, tasksData);
+
+                    if (tasksData.items && tasksData.items.length > 0) {
+                        // Add list ID to each task for completion functionality
+                        tasksData.items.forEach(task => {
+                            task.listId = myTasksList.id;
+                            allTasks.push(task);
+                        });
+                    }
+                }
+            }
+
+            console.log('Total tasks collected:', allTasks.length);
+            console.log('All tasks:', allTasks);
+
+            // Sort by due date (tasks with due dates first, then by date)
+            allTasks.sort((a, b) => {
+                if (a.due && !b.due) return -1;
+                if (!a.due && b.due) return 1;
+                if (a.due && b.due) return new Date(a.due) - new Date(b.due);
+                return 0;
+            });
+
+            return allTasks.slice(0, 10); // Limit to 10 tasks
+        } catch (error) {
+            console.error('Failed to fetch tasks:', error);
+            return null;
+        }
+    }
+
+    async loadCachedTasks() {
+        try {
+            const result = await chrome.storage.local.get([this.TASKS_CACHE_KEY]);
+            const cached = result[this.TASKS_CACHE_KEY];
+
+            if (cached && cached.timestamp && cached.tasks) {
+                const now = Date.now();
+                if (now - cached.timestamp < this.CACHE_DURATION) {
+                    return cached.tasks;
+                }
+            }
+        } catch (error) {
+            console.log('Tasks cache loading failed:', error);
+        }
+        return null;
+    }
+
+    async cacheTasks(tasks) {
+        try {
+            const cacheData = {
+                tasks: tasks,
+                timestamp: Date.now()
+            };
+            await chrome.storage.local.set({ [this.TASKS_CACHE_KEY]: cacheData });
+        } catch (error) {
+            console.log('Tasks cache saving failed:', error);
+        }
+    }
+
+    async getTasksCacheTimestamp() {
+        try {
+            const result = await chrome.storage.local.get([this.TASKS_CACHE_KEY]);
+            const cached = result[this.TASKS_CACHE_KEY];
+            return cached?.timestamp || 0;
+        } catch (error) {
+            return 0;
+        }
+    }
+
+    displayTasks(tasks) {
+        const tasksContainer = document.getElementById('tasksContainer');
+
+        if (!tasks || tasks.length === 0) {
+            this.displayNoTasks();
+            return;
+        }
+
+        let tasksHTML = '';
+
+        tasks.forEach(task => {
+            const taskTitle = task.title || 'Untitled Task';
+            let dueDate = '';
+
+            if (task.due) {
+                const due = new Date(task.due);
+                const now = new Date();
+                const timeDiff = due.getTime() - now.getTime();
+                const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+
+                if (daysDiff < 0) {
+                    dueDate = '<span class="task-overdue">Overdue</span>';
+                } else if (daysDiff === 0) {
+                    dueDate = '<span class="task-due-today">Due today</span>';
+                } else if (daysDiff === 1) {
+                    dueDate = '<span class="task-due-soon">Due tomorrow</span>';
+                } else if (daysDiff < 7) {
+                    dueDate = `<span class="task-due-soon">Due in ${daysDiff} days</span>`;
+                } else {
+                    dueDate = `Due ${due.toLocaleDateString()}`;
+                }
+            }
+
+            tasksHTML += `
+                <div class="task-item" data-task-id="${task.id}" data-list-id="${task.listId}">
+                    <div class="task-checkbox"></div>
+                    <div class="task-content">
+                        <div class="task-title">${taskTitle}</div>
+                        <div class="task-meta">
+                            ${dueDate ? `<span class="task-due">${dueDate}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        tasksContainer.innerHTML = tasksHTML;
+
+        // Add click handlers to checkboxes
+        const checkboxes = tasksContainer.querySelectorAll('.task-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('click', async (e) => {
+                const taskItem = e.target.closest('.task-item');
+                const taskId = taskItem.dataset.taskId;
+                const listId = taskItem.dataset.listId;
+
+                if (taskId && listId) {
+                    await this.completeTask(listId, taskId, taskItem);
+                }
+            });
+        });
+    }
+
+    displayNoTasks() {
+        const tasksContainer = document.getElementById('tasksContainer');
+        tasksContainer.innerHTML = `
+            <div class="tasks-placeholder">
+                <span>No tasks found</span>
+            </div>
+        `;
+    }
+
+    displayTasksConnectionNeeded() {
+        const tasksContainer = document.getElementById('tasksContainer');
+        tasksContainer.innerHTML = `
+            <div class="tasks-placeholder">
+                <button id="connectTasksBtn" class="connect-btn">Connect Google Tasks</button>
+            </div>
+        `;
+
+        document.getElementById('connectTasksBtn').addEventListener('click', () => {
+            this.connectGoogleTasks();
+        });
+    }
+
+    async connectGoogleTasks() {
+        try {
+            // Clear existing tokens to force re-authentication with new scopes
+            await new Promise((resolve) => {
+                chrome.identity.clearAllCachedAuthTokens(() => {
+                    resolve();
+                });
+            });
+
+            // Request OAuth token with both calendar and tasks scopes
+            const token = await new Promise((resolve, reject) => {
+                chrome.identity.getAuthToken({
+                    interactive: true,
+                    scopes: [
+                        'https://www.googleapis.com/auth/calendar.readonly',
+                        'https://www.googleapis.com/auth/tasks'
+                    ]
+                }, (token) => {
+                    if (chrome.runtime.lastError) {
+                        reject(chrome.runtime.lastError);
+                    } else {
+                        resolve(token);
+                    }
+                });
+            });
+
+            if (token) {
+                // Load both calendar events and tasks
+                const [nextEvents, tasks] = await Promise.all([
+                    this.fetchNextCalendarEvent(token),
+                    this.fetchTasksFromAPI(token)
+                ]);
+
+                // Update calendar
+                if (nextEvents && nextEvents.length > 0) {
+                    await this.cacheCalendarEvent(nextEvents);
+                    this.displayNextEvents(nextEvents);
+                }
+
+                // Update tasks
+                if (tasks && tasks.length > 0) {
+                    await this.cacheTasks(tasks);
+                    this.displayTasks(tasks);
+                } else {
+                    this.displayNoTasks();
+                }
+
+                await this.saveCalendarConnectionStatus(true);
+            }
+        } catch (error) {
+            console.error('Tasks connection failed:', error);
+            const tasksContainer = document.getElementById('tasksContainer');
+            tasksContainer.innerHTML = `
+                <div class="tasks-placeholder">
+                    <span style="color: #d32f2f;">Failed to connect tasks</span>
+                    <button id="retryTasksBtn" class="connect-btn" style="margin-top: 10px;">Retry</button>
+                </div>
+            `;
+
+            document.getElementById('retryTasksBtn').addEventListener('click', () => {
+                this.connectGoogleTasks();
+            });
+        }
+    }
+
+    async completeTask(listId, taskId, taskElement) {
+        try {
+            // Add completing animation
+            taskElement.classList.add('task-completing');
+
+            // Try to get token (first silently, then interactively if needed)
+            let token = await this.getTokenSilently();
+
+            if (!token) {
+                // If silent auth fails, try interactive auth
+                token = await new Promise((resolve, reject) => {
+                    chrome.identity.getAuthToken({
+                        interactive: true,
+                        scopes: [
+                            'https://www.googleapis.com/auth/calendar.readonly',
+                            'https://www.googleapis.com/auth/tasks'
+                        ]
+                    }, (token) => {
+                        if (chrome.runtime.lastError) {
+                            reject(chrome.runtime.lastError);
+                        } else {
+                            resolve(token);
+                        }
+                    });
+                });
+            }
+
+            if (!token) {
+                throw new Error('Authentication required');
+            }
+
+            // Mark task as completed via API
+            const response = await fetch(
+                `https://www.googleapis.com/tasks/v1/lists/${listId}/tasks/${taskId}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: 'completed'
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error('API Error:', errorData);
+                throw new Error(`Failed to complete task: ${response.status}`);
+            }
+
+            console.log('Task marked as completed successfully');
+
+            // Add completed animation
+            taskElement.classList.add('task-completed');
+
+            // Wait for animation to complete
+            setTimeout(async () => {
+                // Remove task from display
+                taskElement.remove();
+
+                // Refresh tasks from API
+                const tasks = await this.fetchTasksFromAPI(token);
+                if (tasks && tasks.length > 0) {
+                    await this.cacheTasks(tasks);
+                    // Only update if there are still tasks visible
+                    const tasksContainer = document.getElementById('tasksContainer');
+                    if (tasksContainer.children.length === 0) {
+                        this.displayTasks(tasks);
+                    }
+                } else {
+                    this.displayNoTasks();
+                }
+            }, 500); // Match animation duration
+
+        } catch (error) {
+            console.error('Failed to complete task:', error);
+            // Remove completing animation on error
+            taskElement.classList.remove('task-completing');
+
+            // Show error feedback
+            const taskContent = taskElement.querySelector('.task-content');
+            const originalHTML = taskContent.innerHTML;
+            taskContent.innerHTML = '<div class="task-error">Failed to complete task. Please try again.</div>';
+
+            setTimeout(() => {
+                taskContent.innerHTML = originalHTML;
+            }, 3000);
+        }
     }
 }
 
