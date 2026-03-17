@@ -4,25 +4,32 @@
 export class NewsManager {
     constructor() {
         this.FEED_SOURCES = {
-            'MIT News': [
-                'https://news.mit.edu/rss/feed',
-                'https://news.mit.edu/rss.xml',
-                'https://news.mit.edu/feed',
-                'https://news.mit.edu/rss'
+            'VentureBeat AI': [
+                'https://venturebeat.com/category/ai/feed/'
             ],
-            'MIT Technology Review': [
-                'https://www.technologyreview.com/rss/',
-                'https://www.technologyreview.com/feed/',
-                'https://feeds.technologyreview.com/technology_review'
+            'Hugging Face': [
+                'https://huggingface.co/blog/feed.xml'
             ],
-            'MIT Admissions Blog': [
-                'https://mitadmissions.org/blogs/feed/',
-                'https://mitadmissions.org/blogs/rss.xml',
-                'https://mitadmissions.org/feed/',
-                'https://mitadmissions.org/rss'
+            'AI Alignment Forum': [
+                'https://www.alignmentforum.org/feed.xml'
+            ],
+            'OpenAI': [
+                'https://openai.com/news/rss.xml',
+                'https://openai.com/feed.xml'
+            ],
+            'Google DeepMind': [
+                'https://deepmind.google/blog/rss.xml',
+                'https://www.deepmind.com/blog/rss.xml'
+            ],
+            'Ars Technica AI': [
+                'https://arstechnica.com/ai/feed',
+                'https://feeds.arstechnica.com/arstechnica/index'
+            ],
+            'The Gradient': [
+                'https://thegradient.pub/rss/'
             ]
         };
-        this.CACHE_KEY = 'mit_content_cache';
+        this.CACHE_KEY = 'tech_content_cache';
         this.CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
     }
 
@@ -60,7 +67,7 @@ export class NewsManager {
                 throw new Error('No news articles found');
             }
         } catch (error) {
-            console.error('Error loading MIT Content:', error);
+            console.error('Error loading Tech Content:', error);
             this.showError(error.message);
         }
     }
@@ -157,52 +164,68 @@ export class NewsManager {
     async fetchFallbackContent() {
         return [
             {
-                title: "MIT researchers develop breakthrough in quantum computing",
-                description: "A new approach to quantum error correction could make quantum computers more practical for real-world applications.",
-                link: "https://news.mit.edu/quantum-breakthrough",
+                title: "AI Funding Hits New Records as Startups Race to Build Foundation Models",
+                description: "Venture capital investment in AI surges as startups compete to build the next generation of foundation models.",
+                link: "https://venturebeat.com/category/ai/",
                 pubDate: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-                source: "MIT News",
-                category: "Research"
+                source: "VentureBeat AI",
+                category: "Industry"
             },
             {
-                title: "The Future of AI: What's Next After Large Language Models",
-                description: "Experts discuss the next frontier in artificial intelligence development and its implications for society.",
-                link: "https://www.technologyreview.com/ai-future",
+                title: "Introducing Smol Models: Efficient Open-Source LLMs for Edge Devices",
+                description: "Hugging Face researchers release a new family of compact language models optimized for on-device inference.",
+                link: "https://huggingface.co/blog",
+                pubDate: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
+                source: "Hugging Face",
+                category: "Open Source"
+            },
+            {
+                title: "Mechanistic Interpretability: Understanding Circuits in Transformers",
+                description: "Researchers identify sparse, interpretable circuits responsible for in-context learning in large language models.",
+                link: "https://www.alignmentforum.org",
+                pubDate: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+                source: "AI Alignment Forum",
+                category: "AI Safety"
+            },
+            {
+                title: "Advances in Large Language Model Reasoning",
+                description: "OpenAI researchers explore new techniques for improving step-by-step reasoning capabilities in frontier models.",
+                link: "https://openai.com/news",
                 pubDate: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(),
-                source: "MIT Technology Review",
+                source: "OpenAI",
                 category: "Artificial Intelligence"
             },
             {
-                title: "Student innovation in renewable energy wins competition",
-                description: "MIT students develop novel solar panel technology that increases efficiency by 30%.",
-                link: "https://news.mit.edu/student-renewable-energy",
+                title: "Gemini and the Future of Multimodal AI",
+                description: "Google DeepMind's latest research into multimodal understanding and reasoning across text, image, and audio.",
+                link: "https://deepmind.google/blog",
                 pubDate: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-                source: "MIT News",
-                category: "Energy"
+                source: "Google DeepMind",
+                category: "Research"
             },
             {
-                title: "Building Community Through Digital Platforms",
-                description: "How MIT students connect and support each other through online communities and digital initiatives.",
-                link: "https://mitadmissions.org/blogs/building-community",
+                title: "How AI Chips Are Reshaping the Hardware Landscape",
+                description: "A deep dive into the specialized silicon powering the AI revolution, from Nvidia GPUs to custom TPUs.",
+                link: "https://arstechnica.com/ai",
                 pubDate: new Date(Date.now() - 1000 * 60 * 60 * 18).toISOString(),
-                source: "MIT Admissions Blog",
-                category: "Student Life"
+                source: "Ars Technica AI",
+                category: "Hardware"
             },
             {
-                title: "Climate Change Solutions from MIT Labs",
-                description: "Recent breakthroughs in carbon capture and clean energy technologies show promising results.",
-                link: "https://news.mit.edu/climate-solutions",
+                title: "Interpretability Research: Understanding What Models Learn",
+                description: "New mechanistic interpretability techniques help researchers understand the internal representations of neural networks.",
+                link: "https://thegradient.pub",
                 pubDate: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-                source: "MIT News",
-                category: "Climate"
+                source: "The Gradient",
+                category: "Research"
             },
             {
-                title: "The Ethics of AI in Healthcare",
-                description: "Researchers examine the moral implications of artificial intelligence in medical applications.",
-                link: "https://www.technologyreview.com/ai-healthcare-ethics",
+                title: "Reinforcement Learning from Human Feedback: A Retrospective",
+                description: "Examining the evolution of RLHF and its role in shaping modern AI assistants and chat models.",
+                link: "https://thegradient.pub",
                 pubDate: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
-                source: "MIT Technology Review",
-                category: "Healthcare"
+                source: "The Gradient",
+                category: "Machine Learning"
             }
         ];
     }
@@ -259,21 +282,24 @@ export class NewsManager {
         const title = this.truncateText(article.title, 100);
         const description = this.truncateText(this.stripHtml(article.description), 150);
         const date = this.formatDate(article.pubDate);
-        const source = article.source || 'MIT';
+        const source = article.source || 'Tech News';
 
         const sourceColors = {
-            'MIT News': '#8B1538',
-            'MIT Technology Review': '#0066CC',
-            'MIT Admissions Blog': '#FF6B35'
+            'VentureBeat AI': '#e63946',
+            'Hugging Face': '#ff9d00',
+            'AI Alignment Forum': '#5c6bc0',
+            'OpenAI': '#10a37f',
+            'Google DeepMind': '#4285F4',
+            'Ars Technica AI': '#ff6600',
+            'The Gradient': '#6b4fbb'
         };
-        const sourceColor = sourceColors[source] || '#8B1538';
+        const sourceColor = sourceColors[source] || '#1a1a1a';
 
         articleDiv.innerHTML = `
             <div class="source-tag" style="background-color: ${sourceColor}">${source}</div>
             <h2 class="news-title">${title}</h2>
             <p class="news-description">${description}</p>
             <div class="news-meta">
-                <span class="news-date">${date}</span>
                 <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="read-more">Read More</a>
             </div>
         `;

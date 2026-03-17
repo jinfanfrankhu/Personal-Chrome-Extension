@@ -14,7 +14,12 @@ export class CalendarManager {
     }
 
     bindEvents() {
-        // Connection button is dynamically created, so we don't bind here
+        const connectBtn = document.getElementById('connectCalendarBtn');
+        if (connectBtn) {
+            connectBtn.addEventListener('click', () => {
+                this.connectGoogleCalendar();
+            });
+        }
     }
 
     async initializeCalendar() {
@@ -133,6 +138,8 @@ export class CalendarManager {
                 } else {
                     this.displayNoEvents();
                 }
+
+                document.dispatchEvent(new CustomEvent('calendarConnected', { detail: { token } }));
             }
         } catch (error) {
             console.error('Calendar connection failed:', error);

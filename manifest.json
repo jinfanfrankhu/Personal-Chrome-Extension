@@ -1,16 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "MIT News & Calendar Homepage",
-  "version": "1.0",
-  "description": "Replace Chrome's new tab page with MIT News RSS feed and Google Calendar integration",
+  "name": "AI & Tech News Homepage",
+  "version": "1.1",
+  "description": "Replace Chrome's new tab page with AI & Tech news from Anthropic, OpenAI, DeepMind, and more, plus Google Calendar integration",
   "permissions": [
     "storage",
     "identity"
   ],
   "host_permissions": [
-    "https://news.mit.edu/*",
-    "https://www.technologyreview.com/*",
-    "https://mitadmissions.org/*",
+    "https://venturebeat.com/*",
+    "https://huggingface.co/*",
+    "https://www.alignmentforum.org/*",
+    "https://openai.com/*",
+    "https://deepmind.google/*",
+    "https://www.deepmind.com/*",
+    "https://arstechnica.com/*",
+    "https://thegradient.pub/*",
     "https://www.googleapis.com/*"
   ],
   "oauth2": {

@@ -9,6 +9,9 @@ export class TasksManager {
     }
 
     async init() {
+        document.addEventListener('calendarConnected', () => {
+            this.loadTasksAutomatically();
+        });
         await this.initializeTasks();
     }
 

@@ -6,7 +6,7 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background: #000000; /* Pure black background */
+    background: #ffffff; /* White background */
     min-height: 100vh;
     color: #333;
     overflow-x: hidden; /* Prevent horizontal scrolling */
@@ -14,7 +14,7 @@ body {
 
 /* Add this to hide Chrome's default new tab elements */
 html {
-    background: #000000 !important;
+    background: #ffffff !important;
 }
 
 /* Hide any default Chrome new tab elements */
@@ -52,7 +52,7 @@ ntp-shortcut,
 }
 
 .calendar-bar {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(245, 240, 232, 0.95);
     backdrop-filter: blur(10px);
     border-radius: 12px;
     padding: 15px 20px;
@@ -68,7 +68,7 @@ ntp-shortcut,
 .next-event-section h3 {
     font-size: 0.95rem;
     font-weight: 700;
-    color: #8B1538;
+    color: #1a1a1a;
     margin-bottom: 10px;
     text-align: center;
 }
@@ -82,12 +82,12 @@ ntp-shortcut,
 
 .countdown-number {
     text-align: center;
-    background: linear-gradient(135deg, #8B1538, #A01B49);
+    background: linear-gradient(135deg, #1a1a1a, #3a3a3a);
     color: white;
     padding: 10px 8px;
     border-radius: 8px;
     min-width: 55px;
-    box-shadow: 0 2px 10px rgba(139, 21, 56, 0.25);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .countdown-number span {
@@ -107,7 +107,7 @@ ntp-shortcut,
 
 .set-date-btn,
 .connect-btn {
-    background: #8B1538;
+    background: #1a1a1a;
     color: white;
     border: none;
     padding: 6px 14px;
@@ -122,7 +122,7 @@ ntp-shortcut,
 
 .set-date-btn:hover,
 .connect-btn:hover {
-    background: #A01B49;
+    background: #3a3a3a;
     transform: translateY(-1px);
 }
 
@@ -185,7 +185,7 @@ ntp-shortcut,
 }
 
 .modal-content h3 {
-    color: #8B1538;
+    color: #1a1a1a;
     margin-bottom: 20px;
     font-size: 1.3rem;
 }
@@ -202,7 +202,7 @@ ntp-shortcut,
 
 .date-input:focus {
     outline: none;
-    border-color: #8B1538;
+    border-color: #1a1a1a;
 }
 
 .modal-buttons {
@@ -221,7 +221,7 @@ ntp-shortcut,
 }
 
 .modal-btn.primary {
-    background: #8B1538;
+    background: #1a1a1a;
     color: white;
 }
 
@@ -235,7 +235,7 @@ ntp-shortcut,
 }
 
 .modal-btn.primary:hover {
-    background: #A01B49;
+    background: #3a3a3a;
 }
 
 .modal-btn.secondary:hover {
@@ -243,7 +243,7 @@ ntp-shortcut,
 }
 
 .header {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(245, 240, 232, 0.95);
     backdrop-filter: blur(10px);
     border-radius: 15px;
     padding: 30px;
@@ -258,7 +258,7 @@ ntp-shortcut,
 .logo-section h1 {
     font-size: 2.5rem;
     font-weight: 800;
-    color: #8B1538;
+    color: #1a1a1a;
     margin-bottom: 5px;
 }
 
@@ -276,7 +276,7 @@ ntp-shortcut,
 }
 
 .refresh-btn, .retry-btn {
-    background: #8B1538;
+    background: #1a1a1a;
     color: white;
     border: none;
     padding: 12px 24px;
@@ -284,13 +284,13 @@ ntp-shortcut,
     cursor: pointer;
     font-weight: 600;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(139, 21, 56, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .refresh-btn:hover, .retry-btn:hover {
-    background: #A01B49;
+    background: #3a3a3a;
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(139, 21, 56, 0.4);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 
 .last-updated {
@@ -302,7 +302,7 @@ ntp-shortcut,
 .loading {
     text-align: center;
     padding: 60px 20px;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(245, 240, 232, 0.9);
     border-radius: 15px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
@@ -311,7 +311,7 @@ ntp-shortcut,
     width: 50px;
     height: 50px;
     border: 4px solid #f3f3f3;
-    border-top: 4px solid #8B1538;
+    border-top: 4px solid #1a1a1a;
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin: 0 auto 20px;
@@ -325,7 +325,7 @@ ntp-shortcut,
 .error {
     text-align: center;
     padding: 60px 20px;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(245, 240, 232, 0.9);
     border-radius: 15px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     color: #d32f2f;
@@ -353,7 +353,7 @@ ntp-shortcut,
 }
 
 .news-article {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(245, 240, 232, 0.95);
     backdrop-filter: blur(10px);
     border-radius: 12px;
     padding: 18px;
@@ -371,7 +371,7 @@ ntp-shortcut,
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #8B1538, #A01B49);
+    background: linear-gradient(90deg, #1a1a1a, #3a3a3a);
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -387,7 +387,7 @@ ntp-shortcut,
 
 .source-tag {
     display: inline-block;
-    background-color: #8B1538;
+    background-color: #1a1a1a;
     color: white;
     font-size: 0.8rem;
     font-weight: 600;
@@ -435,14 +435,14 @@ ntp-shortcut,
 }
 
 .read-more {
-    color: #8B1538;
+    color: #1a1a1a;
     font-weight: 600;
     text-decoration: none;
     transition: color 0.3s ease;
 }
 
 .read-more:hover {
-    color: #A01B49;
+    color: #3a3a3a;
 }
 
 /* Responsive design */
@@ -451,38 +451,38 @@ ntp-shortcut,
         grid-template-columns: 1fr;
         gap: 25px;
     }
-    
+
     .countdown-display {
         gap: 15px;
     }
-    
+
     .countdown-number {
         min-width: 60px;
         padding: 12px 8px;
     }
-    
+
     .countdown-number span {
         font-size: 1.5rem;
     }
-    
+
     .header {
         flex-direction: column;
         text-align: center;
         gap: 20px;
     }
-    
+
     .refresh-section {
         align-items: center;
     }
-    
+
     .logo-section h1 {
         font-size: 2rem;
     }
-    
+
     .news-container {
         grid-template-columns: 1fr;
     }
-    
+
     .container {
         padding: 15px;
     }
@@ -494,16 +494,16 @@ ntp-shortcut,
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.05);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(139, 21, 56, 0.6);
+    background: rgba(0, 0, 0, 0.35);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(139, 21, 56, 0.8);
+    background: rgba(0, 0, 0, 0.55);
 }
 
 .next-event {
@@ -513,35 +513,35 @@ ntp-shortcut,
 }
 
 .event-info {
-    background: linear-gradient(135deg, #8B1538, #A01B49);
+    background: linear-gradient(135deg, #1a1a1a, #3a3a3a);
     color: white;
     padding: 10px 12px;
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(139, 21, 56, 0.25);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     transition: all 0.3s ease;
 }
 
 .event-info.primary-event {
-    background: linear-gradient(135deg, #8B1538, #A01B49);
+    background: linear-gradient(135deg, #1a1a1a, #3a3a3a);
     transform: scale(0.98);
-    box-shadow: 0 2px 10px rgba(139, 21, 56, 0.25);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .event-info.secondary-event {
-    background: linear-gradient(135deg, #8B1538, #A01B49);
-    box-shadow: 0 2px 8px rgba(139, 21, 56, 0.25);
+    background: linear-gradient(135deg, #1a1a1a, #3a3a3a);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     opacity: 0.95;
     transform: scale(0.98);
 }
 
 .event-info:hover {
     transform: scale(1);
-    box-shadow: 0 4px 15px rgba(139, 21, 56, 0.35);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
 }
 
 .event-info.secondary-event:hover {
     transform: scale(1);
-    box-shadow: 0 3px 12px rgba(139, 21, 56, 0.35);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
 }
 
 .event-title {
@@ -589,7 +589,7 @@ ntp-shortcut,
 
 /* Google Tasks Section */
 .tasks-section {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(245, 240, 232, 0.95);
     backdrop-filter: blur(10px);
     border-radius: 12px;
     padding: 15px 20px;
@@ -600,7 +600,7 @@ ntp-shortcut,
 .tasks-section h3 {
     font-size: 0.95rem;
     font-weight: 700;
-    color: #8B1538;
+    color: #1a1a1a;
     margin-bottom: 12px;
     text-align: center;
 }
@@ -616,14 +616,14 @@ ntp-shortcut,
     align-items: flex-start;
     gap: 10px;
     padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(245, 240, 232, 0.8);
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     transition: all 0.3s ease;
 }
 
 .task-item:hover {
-    background: rgba(255, 255, 255, 1);
+    background: rgba(245, 240, 232, 1);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     transform: translateX(3px);
 }
@@ -632,14 +632,14 @@ ntp-shortcut,
     width: 18px;
     height: 18px;
     min-width: 18px;
-    border: 2px solid #8B1538;
+    border: 2px solid #1a1a1a;
     border-radius: 50%;
     margin-top: 1px;
     transition: all 0.3s ease;
 }
 
 .task-item:hover .task-checkbox {
-    background: rgba(139, 21, 56, 0.1);
+    background: rgba(0, 0, 0, 0.08);
 }
 
 .task-content {
@@ -713,8 +713,8 @@ ntp-shortcut,
 }
 
 .task-completing .task-checkbox {
-    background: #8B1538;
-    border-color: #8B1538;
+    background: #1a1a1a;
+    border-color: #1a1a1a;
     animation: pulse 1s ease-in-out infinite;
 }
 
@@ -759,7 +759,7 @@ ntp-shortcut,
 }
 
 .task-checkbox:hover {
-    background: rgba(139, 21, 56, 0.2);
+    background: rgba(0, 0, 0, 0.12);
     transform: scale(1.1);
 }
 
