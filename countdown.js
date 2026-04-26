@@ -1,6 +1,72 @@
 /**
  * Countdown Module - Handles countdown timer functionality
  */
+
+export class ProgressBarManager {
+    constructor() {
+        this.PROGRESS_KEY = 'progress_bar_value';
+    }
+
+    async init() {
+        const pct = await this.loadProgress();
+        this.setDisplay(pct);
+        this.bindEvents();
+    }
+
+    async loadProgress() {
+        try {
+            const result = await chrome.storage.local.get([this.PROGRESS_KEY]);
+            return result[this.PROGRESS_KEY] ?? 0;
+        } catch {
+            return 0;
+        }
+    }
+
+    async saveProgress(pct) {
+        try {
+            await chrome.storage.local.set({ [this.PROGRESS_KEY]: pct });
+        } catch { /* ignore */ }
+    }
+
+    setDisplay(pct) {
+        pct = Math.max(0, Math.min(100, pct));
+        document.getElementById('progressBarFill').style.width = `${pct}%`;
+        document.getElementById('progressBarPct').textContent = `${pct}%`;
+    }
+
+    bindEvents() {
+        const track = document.getElementById('progressBarTrack');
+        const inputWrap = document.getElementById('progressInputWrap');
+        const input = document.getElementById('progressBarInput');
+        const setBtn = document.getElementById('progressBarSetBtn');
+
+        track.addEventListener('click', () => {
+            const isVisible = inputWrap.style.display !== 'none';
+            inputWrap.style.display = isVisible ? 'none' : 'flex';
+            if (!isVisible) {
+                this.loadProgress().then(pct => { input.value = pct; });
+                input.focus();
+            }
+        });
+
+        const applyValue = async () => {
+            const val = parseInt(input.value, 10);
+            if (!isNaN(val)) {
+                const clamped = Math.max(0, Math.min(100, val));
+                this.setDisplay(clamped);
+                await this.saveProgress(clamped);
+            }
+            inputWrap.style.display = 'none';
+        };
+
+        setBtn.addEventListener('click', applyValue);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') applyValue();
+            if (e.key === 'Escape') inputWrap.style.display = 'none';
+        });
+    }
+}
+
 export class CountdownManager {
     constructor() {
         this.TARGET_DATE_KEY = 'target_date';

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI & Tech News - Homepage</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="yale.png">
 </head>
 <body>
     <div class="container">
@@ -31,6 +32,21 @@
                     </div>
                 </div>
                 <button id="setDateBtn" class="set-date-btn">Set Target Date</button>
+
+                <!-- Progress Bar -->
+                <div class="progress-bar-section">
+                    <div class="progress-bar-label">
+                        <span id="progressBarTitle">Progress</span>
+                        <span id="progressBarPct">0%</span>
+                    </div>
+                    <div class="progress-bar-track" id="progressBarTrack" title="Click to set progress">
+                        <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-bar-input-wrap" id="progressInputWrap" style="display: none;">
+                        <input type="number" class="progress-bar-input" id="progressBarInput" min="0" max="100" placeholder="0–100" />
+                        <button class="progress-bar-set-btn" id="progressBarSetBtn">Set</button>
+                    </div>
+                </div>
             </div>
             
             <div class="next-event-section">
