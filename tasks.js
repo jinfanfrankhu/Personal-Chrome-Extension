@@ -6,12 +6,23 @@ export class TasksManager {
         this.calendarManager = calendarManager;
         this.TASKS_CACHE_KEY = 'tasks_cache';
         this.CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+        this.currentListId = null;
     }
 
     async init() {
         document.addEventListener('calendarConnected', () => {
             this.loadTasksAutomatically();
         });
+
+        const addTaskBtn = document.getElementById('addTaskBtn');
+        const addTaskInput = document.getElementById('addTaskInput');
+        if (addTaskBtn && addTaskInput) {
+            addTaskBtn.addEventListener('click', () => this.handleAddTask());
+            addTaskInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.handleAddTask();
+            });
+        }
+
         await this.initializeTasks();
     }
 
@@ -82,6 +93,7 @@ export class TasksManager {
                     list.title === 'My Tasks' || list.title === 'Tasks'
                 ) || listsData.items[0];
 
+                this.currentListId = myTasksList.id;
                 console.log(`Fetching tasks from list: "${myTasksList.title}" (ID: ${myTasksList.id})`);
 
                 const tasksResponse = await fetch(
@@ -132,6 +144,7 @@ export class TasksManager {
             if (cached && cached.timestamp && cached.tasks) {
                 const now = Date.now();
                 if (now - cached.timestamp < this.CACHE_DURATION) {
+                    if (cached.listId) this.currentListId = cached.listId;
                     return cached.tasks;
                 }
             }
@@ -145,6 +158,7 @@ export class TasksManager {
         try {
             const cacheData = {
                 tasks: tasks,
+                listId: this.currentListId,
                 timestamp: Date.now()
             };
             await chrome.storage.local.set({ [this.TASKS_CACHE_KEY]: cacheData });
@@ -165,6 +179,7 @@ export class TasksManager {
 
     displayTasks(tasks) {
         const tasksContainer = document.getElementById('tasksContainer');
+        document.getElementById('addTaskRow').style.display = 'flex';
 
         if (!tasks || tasks.length === 0) {
             this.displayNoTasks();
@@ -232,6 +247,7 @@ export class TasksManager {
                 <span>No tasks found</span>
             </div>
         `;
+        document.getElementById('addTaskRow').style.display = 'flex';
     }
 
     displayTasksConnectionNeeded() {
@@ -304,6 +320,53 @@ export class TasksManager {
             document.getElementById('retryTasksBtn').addEventListener('click', () => {
                 this.connectGoogleTasks();
             });
+        }
+    }
+
+    async handleAddTask() {
+        const input = document.getElementById('addTaskInput');
+        const btn = document.getElementById('addTaskBtn');
+        const title = input.value.trim();
+        if (!title) return;
+
+        input.disabled = true;
+        btn.disabled = true;
+
+        try {
+            await this.addTask(title);
+            input.value = '';
+        } catch (error) {
+            console.error('Failed to add task:', error);
+        } finally {
+            input.disabled = false;
+            btn.disabled = false;
+            input.focus();
+        }
+    }
+
+    async addTask(title) {
+        const token = await this.calendarManager.getTokenSilently();
+        if (!token) throw new Error('Not authenticated');
+        if (!this.currentListId) throw new Error('No task list available');
+
+        const response = await fetch(
+            `https://www.googleapis.com/tasks/v1/lists/${this.currentListId}/tasks`,
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ title })
+            }
+        );
+
+        if (!response.ok) throw new Error(`Failed to add task: ${response.status}`);
+
+        const tasks = await this.fetchTasksFromAPI(token);
+        if (tasks !== null) {
+            await this.cacheTasks(tasks);
+            this.displayTasks(tasks);
         }
     }
 

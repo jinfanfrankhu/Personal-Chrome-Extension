@@ -763,6 +763,58 @@ ntp-shortcut,
     transform: scale(1.1);
 }
 
+.add-task-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    align-items: center;
+}
+
+.add-task-input {
+    flex: 1;
+    padding: 7px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    background: rgba(255, 255, 255, 0.8);
+    color: #333;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: inherit;
+}
+
+.add-task-input:focus {
+    border-color: #00356B;
+}
+
+.add-task-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: #00356B;
+    color: white;
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.add-task-btn:hover {
+    background: #286DC0;
+    transform: translateY(-1px);
+}
+
+.add-task-btn:disabled,
+.add-task-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Progress Bar */
 .progress-bar-section {
     margin-top: 12px;
