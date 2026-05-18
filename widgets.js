@@ -1,6 +1,13 @@
 /**
  * Widget Manager - Handles customizable widget boxes with Graph and Heatmap types
  */
+
+const COLORS = {
+    blue:  { hex: '#286DC0', dark: '#1a5ca0' },
+    green: { hex: '#2d7a4f', dark: '#1e5c3a' },
+    red:   { hex: '#c0392b', dark: '#96281b' },
+};
+
 export class WidgetManager {
     constructor() {
         this.WIDGET_KEY_PREFIX = 'widget_';
@@ -44,10 +51,15 @@ export class WidgetManager {
         box.className = 'tracker-box';
         if (!data || !data.type) {
             this.renderEmpty(box, index);
-        } else if (data.type === 'graph') {
-            this.renderGraph(box, index, data);
-        } else if (data.type === 'heatmap') {
-            this.renderHeatmap(box, index, data);
+        } else {
+            const c = COLORS[data.color] || COLORS.blue;
+            box.style.setProperty('--widget-accent', c.hex);
+            box.style.setProperty('--widget-accent-dark', c.dark);
+            if (data.type === 'graph') {
+                this.renderGraph(box, index, data);
+            } else if (data.type === 'heatmap') {
+                this.renderHeatmap(box, index, data);
+            }
         }
     }
 
@@ -65,6 +77,8 @@ export class WidgetManager {
     // ── Type Selector Modal ───────────────────────────────────────────────────
 
     showTypeSelector(box, index) {
+        let selectedColor = 'blue';
+
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.innerHTML = `
@@ -82,17 +96,32 @@ export class WidgetManager {
                         <span class="widget-type-desc">Daily activity grid</span>
                     </button>
                 </div>
+                <div class="widget-type-color-row">
+                    <span class="widget-type-color-label">Color:</span>
+                    <button class="widget-color-swatch widget-color-swatch--selected" data-color="blue" style="background:#286DC0" title="Blue"></button>
+                    <button class="widget-color-swatch" data-color="green" style="background:#2d7a4f" title="Green"></button>
+                    <button class="widget-color-swatch" data-color="red" style="background:#c0392b" title="Red"></button>
+                </div>
                 <button class="modal-btn secondary" id="widgetCancelBtn">Cancel</button>
             </div>
         `;
         document.body.appendChild(modal);
 
+        modal.querySelectorAll('.widget-color-swatch').forEach(swatch => {
+            swatch.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectedColor = swatch.dataset.color;
+                modal.querySelectorAll('.widget-color-swatch').forEach(s => s.classList.remove('widget-color-swatch--selected'));
+                swatch.classList.add('widget-color-swatch--selected');
+            });
+        });
+
         modal.querySelectorAll('.widget-type-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const type = btn.dataset.type;
                 const data = type === 'graph'
-                    ? { type: 'graph', title: 'Metric', range: 30, entries: [] }
-                    : { type: 'heatmap', title: 'Activity', activeDays: [] };
+                    ? { type: 'graph', title: 'Metric', range: 30, entries: [], color: selectedColor }
+                    : { type: 'heatmap', title: 'Activity', activeDays: [], color: selectedColor };
                 await this.saveWidget(index, data);
                 document.body.removeChild(modal);
                 this.renderBox(box, index, data);
@@ -111,6 +140,36 @@ export class WidgetManager {
                 this.renderEmpty(box, index);
             }
         });
+    }
+
+    // ── Color Picker (inline, post-creation) ─────────────────────────────────
+
+    showColorPicker(inner, index, data, box) {
+        const existing = inner.querySelector('.widget-color-picker');
+        if (existing) { existing.remove(); return; }
+
+        const picker = document.createElement('div');
+        picker.className = 'widget-color-picker';
+
+        Object.entries(COLORS).forEach(([key, { hex }]) => {
+            const swatch = document.createElement('button');
+            swatch.className = 'widget-color-picker-swatch' +
+                ((data.color || 'blue') === key ? ' widget-color-picker-swatch--active' : '');
+            swatch.style.background = hex;
+            swatch.title = key.charAt(0).toUpperCase() + key.slice(1);
+            swatch.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const fresh = await this.loadWidget(index);
+                fresh.color = key;
+                await this.saveWidget(index, fresh);
+                this.renderBox(box, index, fresh);
+                if (fresh.type === 'heatmap') this.scrollHeatmapsToToday();
+            });
+            picker.appendChild(swatch);
+        });
+
+        // Insert after header (first child of inner)
+        inner.insertBefore(picker, inner.children[1] || null);
     }
 
     // ── Graph Widget ──────────────────────────────────────────────────────────
@@ -134,11 +193,20 @@ export class WidgetManager {
 
         const actions = document.createElement('div');
         actions.className = 'widget-header-actions';
+
+        const colorBtn = document.createElement('button');
+        colorBtn.className = 'widget-color-btn';
+        colorBtn.style.background = (COLORS[data.color] || COLORS.blue).hex;
+        colorBtn.title = 'Change color';
+        colorBtn.addEventListener('click', (e) => { e.stopPropagation(); this.showColorPicker(inner, index, data, box); });
+
         const resetBtn = document.createElement('button');
         resetBtn.className = 'widget-reset-btn';
         resetBtn.textContent = '×';
         resetBtn.title = 'Remove widget';
         resetBtn.addEventListener('click', (e) => { e.stopPropagation(); this.confirmReset(box, index); });
+
+        actions.appendChild(colorBtn);
         actions.appendChild(resetBtn);
         header.appendChild(title);
         header.appendChild(actions);
@@ -163,7 +231,7 @@ export class WidgetManager {
         // Chart
         const chartArea = document.createElement('div');
         chartArea.className = 'graph-chart-area';
-        chartArea.appendChild(this.buildSVGChart(data.entries || [], data.range, index, box));
+        chartArea.appendChild(this.buildSVGChart(data.entries || [], data.range, index, box, data.color));
 
         // Add entry button
         const addBtn = document.createElement('button');
@@ -178,7 +246,10 @@ export class WidgetManager {
         box.appendChild(inner);
     }
 
-    buildSVGChart(entries, range, index, box) {
+    buildSVGChart(entries, range, index, box, colorKey) {
+        const accent = (COLORS[colorKey] || COLORS.blue).hex;
+        const accentDark = (COLORS[colorKey] || COLORS.blue).dark;
+
         const cutoff = Date.now() - range * 86400000;
         const filtered = (entries || [])
             .filter(e => new Date(e.ts).getTime() >= cutoff)
@@ -218,7 +289,6 @@ export class WidgetManager {
             : PAD_L + ((ts - minTs) / (maxTs - minTs)) * chartW;
         const toY = val => PAD_T + chartH - ((val - effectiveMin) / effectiveRange) * chartH;
 
-        // Axes
         const mk = (tag, attrs) => {
             const el = document.createElementNS(ns, tag);
             Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
@@ -228,7 +298,6 @@ export class WidgetManager {
         svg.appendChild(mk('line', { x1: PAD_L, y1: PAD_T, x2: PAD_L, y2: PAD_T + chartH, stroke: '#ddd', 'stroke-width': '1' }));
         svg.appendChild(mk('line', { x1: PAD_L, y1: PAD_T + chartH, x2: PAD_L + chartW, y2: PAD_T + chartH, stroke: '#ddd', 'stroke-width': '1' }));
 
-        // Y labels + grid lines
         for (let i = 0; i <= 2; i++) {
             const frac = i / 2;
             const val = effectiveMin + frac * effectiveRange;
@@ -241,7 +310,6 @@ export class WidgetManager {
             svg.appendChild(lbl);
         }
 
-        // X labels (first and last point)
         const showDates = filtered.length > 1 ? [filtered[0], filtered[filtered.length - 1]] : [filtered[0]];
         showDates.forEach((entry, i) => {
             const x = toX(new Date(entry.ts).getTime());
@@ -255,18 +323,16 @@ export class WidgetManager {
             svg.appendChild(lbl);
         });
 
-        // Polyline
         if (filtered.length > 1) {
             const pts = filtered.map(e => `${toX(new Date(e.ts).getTime())},${toY(e.value)}`).join(' ');
-            svg.appendChild(mk('polyline', { points: pts, stroke: '#286DC0', 'stroke-width': '1.5', fill: 'none', 'stroke-linejoin': 'round' }));
+            svg.appendChild(mk('polyline', { points: pts, stroke: accent, 'stroke-width': '1.5', fill: 'none', 'stroke-linejoin': 'round' }));
         }
 
-        // Dots
         filtered.forEach(entry => {
             const circle = mk('circle', {
                 cx: toX(new Date(entry.ts).getTime()),
                 cy: toY(entry.value),
-                r: '3', fill: '#286DC0', stroke: 'white', 'stroke-width': '1.5'
+                r: '3', fill: accent, stroke: 'white', 'stroke-width': '1.5'
             });
             circle.style.cursor = 'pointer';
             const titleEl = document.createElementNS(ns, 'title');
@@ -347,11 +413,20 @@ export class WidgetManager {
 
         const actions = document.createElement('div');
         actions.className = 'widget-header-actions';
+
+        const colorBtn = document.createElement('button');
+        colorBtn.className = 'widget-color-btn';
+        colorBtn.style.background = (COLORS[data.color] || COLORS.blue).hex;
+        colorBtn.title = 'Change color';
+        colorBtn.addEventListener('click', (e) => { e.stopPropagation(); this.showColorPicker(inner, index, data, box); });
+
         const resetBtn = document.createElement('button');
         resetBtn.className = 'widget-reset-btn';
         resetBtn.textContent = '×';
         resetBtn.title = 'Remove widget';
         resetBtn.addEventListener('click', (e) => { e.stopPropagation(); this.confirmReset(box, index); });
+
+        actions.appendChild(colorBtn);
         actions.appendChild(resetBtn);
         header.appendChild(title);
         header.appendChild(actions);
@@ -531,13 +606,9 @@ export class WidgetManager {
         noBtn.className = 'widget-reset-confirm-btn';
         noBtn.textContent = '✗';
         noBtn.addEventListener('click', () => {
-            actions.innerHTML = '';
-            const btn = document.createElement('button');
-            btn.className = 'widget-reset-btn';
-            btn.textContent = '×';
-            btn.title = 'Remove widget';
-            btn.addEventListener('click', (e) => { e.stopPropagation(); this.confirmReset(box, index); });
-            actions.appendChild(btn);
+            this.loadWidget(index).then(fresh => {
+                if (fresh) this.renderBox(box, index, fresh);
+            });
         });
 
         wrap.appendChild(yesBtn);
