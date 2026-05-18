@@ -7,6 +7,7 @@ import { CountdownManager, ProgressBarManager } from './countdown.js';
 import { CalendarManager } from './calendar.js';
 import { TasksManager } from './tasks.js';
 import { ProgressTrackerManager } from './progress-tracker.js';
+import { WidgetManager } from './widgets.js';
 
 class MITContentExtension {
     constructor() {
@@ -16,6 +17,7 @@ class MITContentExtension {
         this.calendarManager = new CalendarManager();
         this.tasksManager = new TasksManager(this.calendarManager);
         this.progressTrackerManager = new ProgressTrackerManager();
+        this.widgetManager = new WidgetManager();
         this.init();
     }
 
@@ -26,7 +28,8 @@ class MITContentExtension {
             this.progressBarManager.init(),
             this.calendarManager.init(),
             this.tasksManager.init(),
-            this.progressTrackerManager.init()
+            this.progressTrackerManager.init(),
+            this.widgetManager.init()
         ]);
     }
 }

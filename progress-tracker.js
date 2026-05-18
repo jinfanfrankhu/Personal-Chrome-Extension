@@ -28,6 +28,7 @@ export class ProgressTrackerManager {
         document.getElementById('progressTrackerPanel').style.display = 'grid';
         document.getElementById('trackerToggleBtn').classList.add('active');
         if (save) chrome.storage.local.set({ [this.STORAGE_KEY]: true });
+        document.dispatchEvent(new CustomEvent('trackerShown'));
     }
 
     showCalendar() {
