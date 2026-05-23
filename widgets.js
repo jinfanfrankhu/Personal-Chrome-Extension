@@ -211,27 +211,56 @@ export class WidgetManager {
         header.appendChild(title);
         header.appendChild(actions);
 
-        // Range buttons
+        // Range input row
         const rangeRow = document.createElement('div');
         rangeRow.className = 'graph-range-row';
-        [{ label: '7D', val: 7 }, { label: '30D', val: 30 }, { label: '1Y', val: 365 }].forEach(({ label, val }) => {
-            const btn = document.createElement('button');
-            btn.className = 'graph-range-btn' + (data.range === val ? ' graph-range-btn--active' : '');
-            btn.dataset.range = String(val);
-            btn.textContent = label;
-            btn.addEventListener('click', async () => {
-                const fresh = await this.loadWidget(index);
-                fresh.range = val;
-                await this.saveWidget(index, fresh);
-                this.renderGraph(box, index, fresh);
-            });
-            rangeRow.appendChild(btn);
+
+        const rangeLabel = document.createElement('label');
+        rangeLabel.className = 'graph-range-label';
+        rangeLabel.textContent = 'Last';
+
+        const rangeInput = document.createElement('input');
+        rangeInput.type = 'number';
+        rangeInput.className = 'graph-range-input';
+        rangeInput.value = data.range || 30;
+        rangeInput.min = 1;
+        rangeInput.max = 3650;
+
+        const rangeSuffix = document.createElement('span');
+        rangeSuffix.className = 'graph-range-suffix';
+        rangeSuffix.textContent = 'days';
+
+        const commitRange = async () => {
+            const val = parseInt(rangeInput.value, 10);
+            if (isNaN(val) || val < 1) { rangeInput.value = data.range || 30; return; }
+            const fresh = await this.loadWidget(index);
+            fresh.range = val;
+            await this.saveWidget(index, fresh);
+            this.renderGraph(box, index, fresh);
+        };
+        rangeInput.addEventListener('blur', commitRange);
+        rangeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') rangeInput.blur(); });
+
+        const maBtn = document.createElement('button');
+        maBtn.className = 'graph-ma-btn' + (data.showMovingAvg ? ' graph-ma-btn--active' : '');
+        maBtn.textContent = '7D avg';
+        maBtn.title = 'Toggle 7-day moving average';
+        maBtn.addEventListener('click', async () => {
+            const fresh = await this.loadWidget(index);
+            fresh.showMovingAvg = !fresh.showMovingAvg;
+            await this.saveWidget(index, fresh);
+            this.renderGraph(box, index, fresh);
         });
+
+        rangeRow.appendChild(rangeLabel);
+        rangeRow.appendChild(rangeInput);
+        rangeRow.appendChild(rangeSuffix);
+        rangeRow.appendChild(maBtn);
 
         // Chart
         const chartArea = document.createElement('div');
         chartArea.className = 'graph-chart-area';
-        chartArea.appendChild(this.buildSVGChart(data.entries || [], data.range, index, box, data.color));
+        chartArea.appendChild(this.buildSVGChart(data.entries || [], data.range, index, box, data.color, data.showMovingAvg));
 
         // Add entry button
         const addBtn = document.createElement('button');
@@ -246,14 +275,13 @@ export class WidgetManager {
         box.appendChild(inner);
     }
 
-    buildSVGChart(entries, range, index, box, colorKey) {
+    buildSVGChart(entries, range, index, box, colorKey, showMovingAvg) {
         const accent = (COLORS[colorKey] || COLORS.blue).hex;
         const accentDark = (COLORS[colorKey] || COLORS.blue).dark;
 
         const cutoff = Date.now() - range * 86400000;
-        const filtered = (entries || [])
-            .filter(e => new Date(e.ts).getTime() >= cutoff)
-            .sort((a, b) => new Date(a.ts) - new Date(b.ts));
+        const allSorted = (entries || []).sort((a, b) => new Date(a.ts) - new Date(b.ts));
+        const filtered = allSorted.filter(e => new Date(e.ts).getTime() >= cutoff);
 
         if (filtered.length === 0) {
             const p = document.createElement('p');
@@ -326,6 +354,29 @@ export class WidgetManager {
         if (filtered.length > 1) {
             const pts = filtered.map(e => `${toX(new Date(e.ts).getTime())},${toY(e.value)}`).join(' ');
             svg.appendChild(mk('polyline', { points: pts, stroke: accent, 'stroke-width': '1.5', fill: 'none', 'stroke-linejoin': 'round' }));
+        }
+
+        if (showMovingAvg && filtered.length > 1) {
+            const MA_WINDOW = 7 * 86400000;
+            const maPoints = filtered.map(e => {
+                const ets = new Date(e.ts).getTime();
+                const window = allSorted.filter(x => {
+                    const xts = new Date(x.ts).getTime();
+                    return xts >= ets - MA_WINDOW && xts <= ets;
+                });
+                const avg = window.reduce((s, x) => s + x.value, 0) / window.length;
+                return `${toX(ets)},${toY(avg)}`;
+            }).join(' ');
+            const maLine = mk('polyline', {
+                points: maPoints,
+                stroke: accent,
+                'stroke-width': '2',
+                'stroke-opacity': '0.35',
+                fill: 'none',
+                'stroke-linejoin': 'round',
+                'stroke-dasharray': '4 2',
+            });
+            svg.appendChild(maLine);
         }
 
         filtered.forEach(entry => {

@@ -1090,30 +1090,62 @@ ntp-shortcut,
 
 .graph-range-row {
     display: flex;
+    align-items: center;
     gap: 4px;
     flex-shrink: 0;
 }
 
-.graph-range-btn {
+.graph-range-label,
+.graph-range-suffix {
     font-size: 0.68rem;
+    color: #888;
+}
+
+.graph-range-input {
+    font-size: 0.68rem;
+    width: 46px;
+    padding: 2px 4px;
+    border: 1px solid #c5cfe0;
+    border-radius: 4px;
+    background: transparent;
+    color: #444;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.15s;
+    -moz-appearance: textfield;
+}
+
+.graph-range-input::-webkit-inner-spin-button,
+.graph-range-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+}
+
+.graph-range-input:focus {
+    border-color: var(--widget-accent, #286DC0);
+}
+
+.graph-ma-btn {
+    font-size: 0.65rem;
     padding: 2px 6px;
     border: 1px solid #c5cfe0;
     border-radius: 4px;
     background: transparent;
     cursor: pointer;
-    color: #666;
+    color: #888;
+    margin-left: auto;
     transition: all 0.15s;
 }
 
-.graph-range-btn:hover {
-    border-color: #286DC0;
-    color: #286DC0;
+.graph-ma-btn:hover {
+    border-color: var(--widget-accent, #286DC0);
+    color: var(--widget-accent, #286DC0);
 }
 
-.graph-range-btn--active {
+.graph-ma-btn--active {
     background: var(--widget-accent, #286DC0);
     color: white;
     border-color: var(--widget-accent, #286DC0);
+    opacity: 0.75;
 }
 
 .graph-chart-area {
