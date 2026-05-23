@@ -358,25 +358,78 @@ export class WidgetManager {
 
         if (showMovingAvg && filtered.length > 1) {
             const MA_WINDOW = 7 * 86400000;
-            const maPoints = filtered.map(e => {
+            const maData = filtered.map(e => {
                 const ets = new Date(e.ts).getTime();
-                const window = allSorted.filter(x => {
+                const win = allSorted.filter(x => {
                     const xts = new Date(x.ts).getTime();
                     return xts >= ets - MA_WINDOW && xts <= ets;
                 });
-                const avg = window.reduce((s, x) => s + x.value, 0) / window.length;
-                return `${toX(ets)},${toY(avg)}`;
-            }).join(' ');
+                const avg = win.reduce((s, x) => s + x.value, 0) / win.length;
+                return { x: toX(ets), y: toY(avg), avg };
+            });
+
             const maLine = mk('polyline', {
-                points: maPoints,
+                points: maData.map(p => `${p.x},${p.y}`).join(' '),
                 stroke: accent,
                 'stroke-width': '2',
-                'stroke-opacity': '0.35',
+                'stroke-opacity': '0.45',
                 fill: 'none',
                 'stroke-linejoin': 'round',
-                'stroke-dasharray': '4 2',
             });
             svg.appendChild(maLine);
+
+            // Invisible wide hit area for hover
+            const maHit = mk('polyline', {
+                points: maData.map(p => `${p.x},${p.y}`).join(' '),
+                stroke: 'transparent',
+                'stroke-width': '10',
+                fill: 'none',
+                'stroke-linejoin': 'round',
+                style: 'cursor: crosshair',
+            });
+
+            // Tooltip elements
+            const tipGroup = document.createElementNS(ns, 'g');
+            tipGroup.style.display = 'none';
+            const tipRect = mk('rect', { rx: '3', ry: '3', fill: 'rgba(30,30,30,0.78)', height: '14' });
+            const tipText = mk('text', { 'font-size': '8', fill: 'white', 'dominant-baseline': 'middle' });
+            tipGroup.appendChild(tipRect);
+            tipGroup.appendChild(tipText);
+            svg.appendChild(tipGroup);
+
+            maHit.addEventListener('mousemove', (e) => {
+                const rect = svg.getBoundingClientRect();
+                const scaleX = W / rect.width;
+                const mouseX = (e.clientX - rect.left) * scaleX;
+
+                // Find nearest MA point by x
+                let nearest = maData[0];
+                let minDist = Math.abs(mouseX - maData[0].x);
+                for (const p of maData) {
+                    const d = Math.abs(mouseX - p.x);
+                    if (d < minDist) { minDist = d; nearest = p; }
+                }
+
+                const label = nearest.avg % 1 === 0 ? String(nearest.avg) : nearest.avg.toFixed(1);
+                tipText.textContent = label;
+
+                // Measure text and position
+                const textW = label.length * 5 + 6;
+                const tipX = Math.min(nearest.x - textW / 2, W - textW - 2);
+                const tipY = nearest.y - 18;
+
+                tipRect.setAttribute('x', tipX);
+                tipRect.setAttribute('y', tipY);
+                tipRect.setAttribute('width', textW);
+                tipText.setAttribute('x', tipX + textW / 2);
+                tipText.setAttribute('y', tipY + 7);
+                tipText.setAttribute('text-anchor', 'middle');
+                tipGroup.style.display = '';
+            });
+
+            maHit.addEventListener('mouseleave', () => { tipGroup.style.display = 'none'; });
+
+            svg.appendChild(maHit);
         }
 
         filtered.forEach(entry => {
