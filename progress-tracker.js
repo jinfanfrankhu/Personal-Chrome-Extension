@@ -6,14 +6,9 @@ export class ProgressTrackerManager {
         this.STORAGE_KEY = 'tracker_panel_open';
     }
 
-    async init() {
+    init() {
         const btn = document.getElementById('trackerToggleBtn');
         btn.addEventListener('click', () => this.toggle());
-
-        const result = await chrome.storage.local.get([this.STORAGE_KEY]);
-        if (result[this.STORAGE_KEY]) {
-            this.showTracker(false);
-        }
     }
 
     toggle() {
