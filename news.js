@@ -27,6 +27,9 @@ export class NewsManager {
             ],
             'The Gradient': [
                 'https://thegradient.pub/rss/'
+            ],
+            'Quantocracy': [
+                'https://quantocracy.com/author/quantadmin/feed/'
             ]
         };
         this.CACHE_KEY = 'tech_content_cache';
