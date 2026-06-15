@@ -8,20 +8,70 @@ const COLORS = {
     red:   { hex: '#c0392b', dark: '#96281b' },
 };
 
+const WIDGET_IDS_KEY = 'widget_ids';
+
 export class WidgetManager {
     constructor() {
         this.WIDGET_KEY_PREFIX = 'widget_';
-        this.boxes = [];
+        this.panel = null;
+        this.addBtn = null;
+        this.boxMap = {}; // id -> DOM element
     }
 
     async init() {
-        this.boxes = Array.from(document.querySelectorAll('.tracker-box'));
-        await this.renderAll();
+        this.panel = document.getElementById('progressTrackerPanel');
+        let ids = await this.loadIds();
+
+        // On first load after upgrade, existing users may have empty slots — skip those
+        const validIds = [];
+        for (const id of ids) {
+            const data = await this.loadWidget(id);
+            if (data) {
+                validIds.push(id);
+                const box = this.createBoxElement();
+                this.panel.appendChild(box);
+                this.boxMap[id] = box;
+            }
+        }
+        if (validIds.length !== ids.length) {
+            await this.saveIds(validIds);
+            ids = validIds;
+        }
+
+        // "Add Widget" button — always last in the grid
+        this.addBtn = document.createElement('button');
+        this.addBtn.className = 'tracker-add-btn';
+        this.addBtn.textContent = '+ Add Widget';
+        this.addBtn.addEventListener('click', () => this.showAddWidgetModal());
+        this.panel.appendChild(this.addBtn);
+
+        // Render all widgets
+        for (const id of ids) {
+            const data = await this.loadWidget(id);
+            this.renderBox(this.boxMap[id], id, data);
+        }
+
         document.addEventListener('trackerShown', () => this.scrollHeatmapsToToday());
         this.scrollHeatmapsToToday();
     }
 
+    createBoxElement() {
+        const box = document.createElement('div');
+        box.className = 'tracker-box';
+        return box;
+    }
+
     // ── Storage ───────────────────────────────────────────────────────────────
+
+    async loadIds() {
+        const result = await chrome.storage.local.get([WIDGET_IDS_KEY]);
+        // Default [0,1,2,3] for existing users who don't have widget_ids yet
+        return result[WIDGET_IDS_KEY] ?? [0, 1, 2, 3];
+    }
+
+    async saveIds(ids) {
+        await chrome.storage.local.set({ [WIDGET_IDS_KEY]: ids });
+    }
 
     async loadWidget(index) {
         const key = this.WIDGET_KEY_PREFIX + index;
@@ -37,46 +87,34 @@ export class WidgetManager {
         await chrome.storage.local.remove([this.WIDGET_KEY_PREFIX + index]);
     }
 
-    // ── Rendering ─────────────────────────────────────────────────────────────
-
-    async renderAll() {
-        for (let i = 0; i < this.boxes.length; i++) {
-            const data = await this.loadWidget(i);
-            this.renderBox(this.boxes[i], i, data);
-        }
+    async removeSlot(id) {
+        const ids = await this.loadIds();
+        await this.saveIds(ids.filter(i => i !== id));
+        await this.deleteWidget(id);
+        const box = this.boxMap[id];
+        if (box && box.parentNode) box.parentNode.removeChild(box);
+        delete this.boxMap[id];
     }
+
+    // ── Rendering ─────────────────────────────────────────────────────────────
 
     renderBox(box, index, data) {
         box.innerHTML = '';
         box.className = 'tracker-box';
-        if (!data || !data.type) {
-            this.renderEmpty(box, index);
-        } else {
-            const c = COLORS[data.color] || COLORS.blue;
-            box.style.setProperty('--widget-accent', c.hex);
-            box.style.setProperty('--widget-accent-dark', c.dark);
-            if (data.type === 'graph') {
-                this.renderGraph(box, index, data);
-            } else if (data.type === 'heatmap') {
-                this.renderHeatmap(box, index, data);
-            }
+        if (!data || !data.type) return;
+        const c = COLORS[data.color] || COLORS.blue;
+        box.style.setProperty('--widget-accent', c.hex);
+        box.style.setProperty('--widget-accent-dark', c.dark);
+        if (data.type === 'graph') {
+            this.renderGraph(box, index, data);
+        } else if (data.type === 'heatmap') {
+            this.renderHeatmap(box, index, data);
         }
     }
 
-    // ── Empty State ───────────────────────────────────────────────────────────
+    // ── Add Widget Modal ──────────────────────────────────────────────────────
 
-    renderEmpty(box, index) {
-        box.classList.add('tracker-box--empty');
-        const label = document.createElement('span');
-        label.className = 'tracker-box-label';
-        label.textContent = `Widget ${index + 1}`;
-        box.appendChild(label);
-        box.addEventListener('click', () => this.showTypeSelector(box, index), { once: true });
-    }
-
-    // ── Type Selector Modal ───────────────────────────────────────────────────
-
-    showTypeSelector(box, index) {
+    showAddWidgetModal() {
         let selectedColor = 'blue';
 
         const modal = document.createElement('div');
@@ -119,26 +157,31 @@ export class WidgetManager {
         modal.querySelectorAll('.widget-type-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const type = btn.dataset.type;
+                const ids = await this.loadIds();
+                const newId = ids.length === 0 ? 0 : Math.max(...ids) + 1;
+                ids.push(newId);
+                await this.saveIds(ids);
+
+                const box = this.createBoxElement();
+                this.panel.insertBefore(box, this.addBtn);
+                this.boxMap[newId] = box;
+
                 const data = type === 'graph'
                     ? { type: 'graph', title: 'Metric', range: 30, entries: [], color: selectedColor }
                     : { type: 'heatmap', title: 'Activity', activeDays: [], color: selectedColor };
-                await this.saveWidget(index, data);
+                await this.saveWidget(newId, data);
                 document.body.removeChild(modal);
-                this.renderBox(box, index, data);
+                this.renderBox(box, newId, data);
                 if (type === 'heatmap') this.scrollHeatmapsToToday();
             });
         });
 
         modal.querySelector('#widgetCancelBtn').addEventListener('click', () => {
             document.body.removeChild(modal);
-            this.renderEmpty(box, index);
         });
 
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                document.body.removeChild(modal);
-                this.renderEmpty(box, index);
-            }
+            if (e.target === modal) document.body.removeChild(modal);
         });
     }
 
@@ -701,10 +744,7 @@ export class WidgetManager {
         const yesBtn = document.createElement('button');
         yesBtn.className = 'widget-reset-confirm-btn';
         yesBtn.textContent = '✓';
-        yesBtn.addEventListener('click', async () => {
-            await this.deleteWidget(index);
-            this.renderBox(box, index, null);
-        });
+        yesBtn.addEventListener('click', () => this.removeSlot(index));
 
         const noBtn = document.createElement('button');
         noBtn.className = 'widget-reset-confirm-btn';

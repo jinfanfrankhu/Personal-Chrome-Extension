@@ -96,7 +96,24 @@ ntp-shortcut,
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 12px;
-    min-height: 150px;
+}
+
+.tracker-add-btn {
+    grid-column: 1 / -1;
+    background: none;
+    border: 2px dashed #c5cfe0;
+    border-radius: 10px;
+    color: #bbb;
+    font-size: 0.82rem;
+    padding: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.tracker-add-btn:hover {
+    border-color: rgba(0, 53, 107, 0.33);
+    color: #286DC0;
+    background: rgba(255, 255, 255, 0.7);
 }
 
 .tracker-box {
